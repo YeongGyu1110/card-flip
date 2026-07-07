@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>카드 뒤집기 프로토타입 - 텍스트 입력형</title>
+
+    <!-- 🌟 [추가됨] 모바일 환경 터치 드래그 앤 드롭 지원 스크립트 -->
+    <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
+
     <style>
         body {
             font-family: sans-serif;
@@ -13,7 +17,6 @@
             margin-top: 40px;
         }
 
-        /* 공통 버튼 스타일 */
         button {
             padding: 10px 15px;
             font-size: 15px;
@@ -25,10 +28,8 @@
         }
         button:hover { background-color: #e0e0e0; }
 
-        /* 화면 숨김용 클래스 */
         .hidden { display: none !important; }
 
-        /* 섹션별 스타일 */
         .section {
             display: flex;
             flex-direction: column;
@@ -37,7 +38,6 @@
         }
         .header-title { margin-bottom: 20px; color: #333; }
 
-        /* ================= 설정(입력) 화면 ================= */
         .input-grid {
             display: grid;
             grid-template-columns: repeat(3, 80px);
@@ -57,8 +57,7 @@
             border-color: #2196F3;
         }
 
-        /* ================= 게임 화면 ================= */
-        .controls { margin-bottom: 20px; }
+        .controls { margin-bottom: 20px; text-align: center; }
         
         .board {
             display: grid;
@@ -79,13 +78,16 @@
             cursor: grab;
             user-select: none;
             transition: border 0.2s;
+            
+            /* 🌟 [추가됨] 모바일에서 카드 드래그 시 화면이 스크롤되는 현상 방지 */
+            touch-action: none; 
         }
         .card:active { cursor: grabbing; }
 
         .card.flipped {
             background-color: #888;
             background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, #777 10px, #777 20px);
-            color: transparent; /* 글자 투명화 */
+            color: transparent; 
         }
         
         .card.drag-over {
@@ -95,87 +97,85 @@
 </head>
 <body>
 
-    <!-- 1. 텍스트 입력 화면 -->
     <div id="setupSection" class="section">
         <h2 class="header-title">9개의 글자를 입력해주세요</h2>
         <div class="input-grid" id="inputGrid">
-            <!-- 9칸의 입력 상자, 초기값을 위해 기본값 할당해둠 -->
-            <input type="text" maxlength="1" value="Q">
-            <input type="text" maxlength="1" value="W">
-            <input type="text" maxlength="1" value="E">
-            <input type="text" maxlength="1" value="R">
-            <input type="text" maxlength="1" value="T">
-            <input type="text" maxlength="1" value="Y">
-            <input type="text" maxlength="1" value="U">
-            <input type="text" maxlength="1" value="I">
-            <input type="text" maxlength="1" value="O">
+            <input type="text" maxlength="1" value="가">
+            <input type="text" maxlength="1" value="나">
+            <input type="text" maxlength="1" value="다">
+            <input type="text" maxlength="1" value="라">
+            <input type="text" maxlength="1" value="마">
+            <input type="text" maxlength="1" value="바">
+            <input type="text" maxlength="1" value="사">
+            <input type="text" maxlength="1" value="아">
+            <input type="text" maxlength="1" value="자">
         </div>
         <button id="createCardBtn" style="background-color: #4CAF50; color: white;">카드 생성하기</button>
     </div>
 
-    <!-- 2. 게임 화면 (초기엔 숨겨져 있음) -->
     <div id="gameSection" class="section hidden">
         <div class="controls">
             <button id="flipAllBtn">1. 모두 뒷면으로 뒤집기</button>
             <button id="restartGameBtn">처음 배치로 돌리기</button>
+            <br>
             <button id="backToSetupBtn">텍스트 변경하기</button>
         </div>
         <div class="board" id="board">
             <!-- 카드가 렌더링될 위치 -->
         </div>
-        <p style="color: #666; font-size: 14px; margin-top: 15px;">
-            안내: 뒤집은 후 카드를 마우스로 끌어서(드래그) 서로 위치를 바꿀 수 있습니다.<br>클릭하면 다시 오픈됩니다.
+        <p style="color: #666; font-size: 14px; margin-top: 15px; text-align: center; padding: 0 10px;">
+            안내: 카드를 손가락(마우스)으로 길게 눌러 끌어서<br>서로 위치를 바꿀 수 있습니다.<br>클릭(터치)하면 다시 오픈됩니다.
         </p>
     </div>
 
     <script>
-        // 요소들 참조
+        // 자바스크립트 로직은 이전과 100% 동일하게 유지됩니다. 
+        // 외부 스크립트가 알아서 터치를 드래그로 변환해줍니다.
+        
         const setupSection = document.getElementById('setupSection');
         const gameSection = document.getElementById('gameSection');
         const board = document.getElementById('board');
         const inputs = document.querySelectorAll('.input-grid input');
 
-        let currentChars = []; // 입력받은 글자를 저장할 배열
+        let currentChars = []; 
         let draggedCard = null;
 
-        // ===== 1. 보드(카드) 생성 함수 =====
         function createBoard() {
             board.innerHTML = '';
             
             currentChars.forEach((char) => {
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.innerText = char || ' '; // 값이 없으면 공백으로 처리
+                card.innerText = char || ' '; 
                 card.draggable = true; 
 
-                // 클릭하여 한장씩 열기(앞면으로 뒤집기)
                 card.addEventListener('click', function() {
                     this.classList.remove('flipped');
                 });
 
-                // 마우스 드래그 앤 드롭을 이용해 위치 바꾸기 로직 (Swapping)
                 card.addEventListener('dragstart', function() {
                     draggedCard = this;
                     setTimeout(() => this.style.opacity = '0.4', 0);
                 });
+                
                 card.addEventListener('dragover', function(e) {
                     e.preventDefault();
                     this.classList.add('drag-over');
                 });
+                
                 card.addEventListener('dragleave', function() {
                     this.classList.remove('drag-over');
                 });
+                
                 card.addEventListener('drop', function(e) {
                     e.preventDefault();
                     this.classList.remove('drag-over');
                     
-                    if (this !== draggedCard) {
-                        // 내용물(글자) 교환
+                    if (this !== draggedCard && draggedCard !== null) {
                         let tempText = this.innerText;
                         this.innerText = draggedCard.innerText;
                         draggedCard.innerText = tempText;
 
-                        // 현재 앞뒷면 상태도 그대로 묶어서 가져가기 위함
                         let thisFlipped = this.classList.contains('flipped');
                         let draggedFlipped = draggedCard.classList.contains('flipped');
                         if (thisFlipped !== draggedFlipped) {
@@ -184,6 +184,7 @@
                         }
                     }
                 });
+                
                 card.addEventListener('dragend', function() {
                     this.style.opacity = '1';
                     draggedCard = null;
@@ -193,34 +194,22 @@
             });
         }
 
-
-        // ===== 2. 각종 버튼 이벤트 연결 =====
-
-        // [카드 생성하기] - 텍스트 입력창에서 화면 전환
         document.getElementById('createCardBtn').addEventListener('click', () => {
-            // 입력창에 있는 글자 수집 
-            // 9개 중 입력값이 비어있는 것은 빈 칸(' ')으로 수집됩니다
             currentChars = Array.from(inputs).map(input => input.value);
-            
-            // 화면 전환
             setupSection.classList.add('hidden');
             gameSection.classList.remove('hidden');
-
             createBoard();
         });
 
-        // [모두 뒷면으로 뒤집기] 
         document.getElementById('flipAllBtn').addEventListener('click', () => {
             const cards = document.querySelectorAll('.card');
             cards.forEach(card => card.classList.add('flipped'));
         });
 
-        // [처음 배치로 돌리기] - 안 섞인 처음상태 + 모두 앞면 보여주기
         document.getElementById('restartGameBtn').addEventListener('click', () => {
-            createBoard(); // 다시 생성 (currentChars 배열 기준으로 처음상태 그대로)
+            createBoard(); 
         });
 
-        // [텍스트 변경하기] - 뒤로 돌아가기
         document.getElementById('backToSetupBtn').addEventListener('click', () => {
             gameSection.classList.add('hidden');
             setupSection.classList.remove('hidden');
