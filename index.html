@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>카드 뒤집기 프로토타입 - 플로팅 바 버전</title>
+    <title>카드 정답 맞추기 프로토타입</title>
 
     <!-- 모바일 환경 터치 드래그 앤 드롭 지원 스크립트 -->
     <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
@@ -16,7 +16,6 @@
             align-items: center;
             margin: 0;
             padding-top: 30px;
-            /* 하단 바에 컨텐츠가 가려지지 않도록 여백 추가 */
             padding-bottom: 180px; 
             background-color: #f4f4f9;
         }
@@ -33,6 +32,14 @@
             transition: 0.2s;
         }
         button:hover { background-color: #e0e0e0; }
+        
+        #checkAnswerBtn {
+            background-color: #ff9800;
+            color: white;
+            font-weight: bold;
+            border: none;
+        }
+        #checkAnswerBtn:hover { background-color: #e68a00; }
 
         .hidden { display: none !important; }
 
@@ -42,27 +49,27 @@
             align-items: center;
             width: 100%;
         }
-        .header-title { margin-bottom: 20px; color: #333; text-align: center; }
+        .header-title { margin-bottom: 10px; color: #333; text-align: center; }
+        .sub-desc { color: #666; margin-bottom: 20px; font-size: 14px; }
 
         /* ================= 설정(입력) 화면 ================= */
-        .input-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 80px);
-            grid-template-rows: repeat(3, 80px);
-            gap: 10px;
+        .input-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             margin-bottom: 20px;
         }
-        .input-grid input {
+        #wordInput {
             text-align: center;
             font-size: 24px;
             font-weight: bold;
             border: 2px solid #ccc;
             border-radius: 8px;
+            padding: 10px;
+            width: 250px;
+            letter-spacing: 2px;
         }
-        .input-grid input:focus {
-            outline: none;
-            border-color: #2196F3;
-        }
+        #wordInput:focus { outline: none; border-color: #2196F3; }
 
         /* ================= 게임 화면 ================= */
         .controls { margin-bottom: 20px; text-align: center; }
@@ -74,7 +81,6 @@
             gap: 10px;
         }
 
-        /* 빈 카드 슬롯 (카드가 놓일 자리) */
         .slot {
             width: 100px;
             height: 130px;
@@ -92,7 +98,7 @@
             border-color: #ff2a2a;
         }
 
-        /* 카드 디자인 */
+        /* 카드 기본 상태 (앞면) */
         .card {
             width: 100px;
             height: 130px;
@@ -107,23 +113,29 @@
             cursor: grab;
             user-select: none;
             box-sizing: border-box;
-            flex-shrink: 0; /* 하단 바에서 카드가 찌그러지지 않게 방지 */
-            
-            /* 모바일 스크롤 방지 */
+            flex-shrink: 0; 
             touch-action: none; 
-            transition: opacity 0.2s;
+            transition: opacity 0.2s, background-color 0.3s, color 0.3s;
         }
         .card:active { cursor: grabbing; }
 
+        /* 일반 뒤집힘 상태 (모두 뒤집기 등) - 글자 투명화 */
         .card.flipped {
             background-color: #888;
             background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, #777 10px, #777 20px);
             color: transparent; 
         }
-        
-        .card.drag-over {
-            border: 3px dashed #ff2a2a;
+
+        /* 🌟 정답 맞춘 후 상태 (뒷면 느낌 + 흰색 숫자 표기) */
+        .card.success-flip {
+            background-color: #34495e;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, #2c3e50 10px, #2c3e50 20px);
+            color: #ffffff; /* 글자(숫자)는 보이게 */
+            border-color: #2c3e50;
+            cursor: default; /* 더이상 잡을 수 없다는 의미 */
         }
+        
+        .card.drag-over { border: 3px dashed #ff2a2a; }
 
         /* ================= 하단 플로팅 바 ================= */
         .bottom-bar {
@@ -137,14 +149,14 @@
             box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
             padding: 0 15px;
-            overflow-x: auto; /* 카드가 많을 경우 가로 스크롤 허용 */
+            overflow-x: auto; 
             box-sizing: border-box;
             z-index: 1000;
         }
 
-        /* 안내 문구 */
         .guide-text {
             color: #666; 
             font-size: 14px; 
@@ -157,42 +169,32 @@
 </head>
 <body>
 
-    <!-- 1. 텍스트 입력 화면 -->
     <div id="setupSection" class="section">
-        <h2 class="header-title">9개의 글자를 입력해주세요</h2>
-        <div class="input-grid" id="inputGrid">
-            <input type="text" maxlength="1" value="가">
-            <input type="text" maxlength="1" value="나">
-            <input type="text" maxlength="1" value="다">
-            <input type="text" maxlength="1" value="라">
-            <input type="text" maxlength="1" value="마">
-            <input type="text" maxlength="1" value="바">
-            <input type="text" maxlength="1" value="사">
-            <input type="text" maxlength="1" value="아">
-            <input type="text" maxlength="1" value="자">
+        <h2 class="header-title">게임 설정</h2>
+        <p class="sub-desc">9글자의 단어 또는 문장을 입력해주세요.</p>
+        
+        <div class="input-container">
+            <input type="text" id="wordInput" maxlength="9" placeholder="예: 대한민국만세다" value="가나다라마바사아자">
         </div>
-        <button id="createCardBtn" style="background-color: #4CAF50; color: white; font-weight: bold;">카드 생성하기</button>
+        <button id="startGameBtn" style="background-color: #4CAF50; color: white; font-weight: bold; font-size: 16px; padding: 12px 20px;">무작위로 섞어서 시작</button>
     </div>
 
-    <!-- 2. 게임 화면 -->
     <div id="gameSection" class="section hidden">
         <div class="controls">
+            <button id="checkAnswerBtn">💡 정답 확인하기</button>
             <button id="flipAllBtn">모두 뒷면으로 뒤집기</button>
-            <button id="restartGameBtn">초기화 (하단 바에 모으기)</button>
             <br>
-            <button id="backToSetupBtn">텍스트 변경하기</button>
+            <button id="restartGameBtn">다시 섞기</button>
+            <button id="backToSetupBtn">텍스트 변경</button>
         </div>
         
-        <!-- 3x3 빈 슬롯 (카드를 올려놓을 판) -->
         <div class="board" id="board"></div>
         
         <p class="guide-text">
-            <strong>[배치 및 섞기]</strong><br>
-            하단 바에 있는 카드를 끌어다 빈 칸(점선)에 배치하세요.<br>
-            카드끼리 끌어다 겹치면 서로 위치가 바뀝니다.
+            하단 바에 섞인 카드를 위쪽 빈 칸에 올바른 순서로 배치하세요.<br>
+            배치 후 <strong>[정답 확인하기]</strong>를 눌러보세요.
         </p>
 
-        <!-- 하단 플로팅 바 (초기 카드 대기열) -->
         <div id="bottomBar" class="bottom-bar"></div>
     </div>
 
@@ -201,22 +203,28 @@
         const gameSection = document.getElementById('gameSection');
         const board = document.getElementById('board');
         const bottomBar = document.getElementById('bottomBar');
-        const inputs = document.querySelectorAll('.input-grid input');
+        const wordInput = document.getElementById('wordInput');
 
-        let currentChars = []; 
+        let originalText = ""; 
         let draggedCard = null;
 
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
         function initGame() {
-            // 영역 초기화
             board.innerHTML = '';
             bottomBar.innerHTML = '';
 
-            // 1. 3x3 빈 슬롯(Drop 대상) 생성
             for (let i = 0; i < 9; i++) {
                 const slot = document.createElement('div');
                 slot.className = 'slot';
                 
-                // 빈 슬롯에 카드를 놓을 때의 이벤트
                 slot.addEventListener('dragover', e => {
                     e.preventDefault();
                     slot.classList.add('drag-over');
@@ -227,7 +235,6 @@
                 slot.addEventListener('drop', function(e) {
                     e.preventDefault();
                     this.classList.remove('drag-over');
-                    // 슬롯이 비어있고, 드래그 중인 카드가 있을 때만 쏙 들어감
                     if (this.childElementCount === 0 && draggedCard) {
                         this.appendChild(draggedCard);
                     }
@@ -235,37 +242,46 @@
                 board.appendChild(slot);
             }
 
-            // 2. 9개의 카드를 생성하여 하단 바에 추가
-            currentChars.forEach((char) => {
+            const charsArray = originalText.split('');
+            const shuffledChars = shuffleArray(charsArray);
+
+            shuffledChars.forEach((char) => {
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.innerText = char || ' '; 
+                card.innerText = char; 
                 card.draggable = true; 
 
-                // 클릭 시 앞면 오픈
                 card.addEventListener('click', function() {
+                    // 정답 맞춘 후(success-flip 상태)에는 클릭해도 안 열리도록 방어
+                    if(this.classList.contains('success-flip')) return;
                     this.classList.remove('flipped');
                 });
 
-                // --- 드래그 이벤트 (카드 이동/교환) ---
                 card.addEventListener('dragstart', function(e) {
+                    // 정답 맞춘 후엔 드래그 불가능
+                    if(this.classList.contains('success-flip')) {
+                        e.preventDefault();
+                        return;
+                    }
                     draggedCard = this;
                     setTimeout(() => this.style.opacity = '0.4', 0);
                 });
+                
                 card.addEventListener('dragover', function(e) {
                     e.preventDefault();
-                    e.stopPropagation(); // 슬롯의 dragover 이벤트 방지
+                    e.stopPropagation(); 
                     this.classList.add('drag-over');
                 });
+                
                 card.addEventListener('dragleave', function() {
                     this.classList.remove('drag-over');
                 });
+                
                 card.addEventListener('drop', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     this.classList.remove('drag-over');
                     
-                    // 카드와 카드가 겹쳐졌을 때 DOM(부모) 자체를 맞교환 (Swap)
                     if (this !== draggedCard && draggedCard !== null) {
                         const parent1 = draggedCard.parentNode;
                         const parent2 = this.parentNode;
@@ -274,6 +290,7 @@
                         parent1.appendChild(this);
                     }
                 });
+                
                 card.addEventListener('dragend', function() {
                     this.style.opacity = '1';
                     draggedCard = null;
@@ -282,35 +299,78 @@
                 bottomBar.appendChild(card);
             });
 
-            // 3. 하단 바 자체도 드롭 영역으로 설정 (다시 카드를 내리고 싶을 때)
             bottomBar.addEventListener('dragover', e => {
                 e.preventDefault();
             });
             bottomBar.addEventListener('drop', function(e) {
                 e.preventDefault();
-                // 하단 바의 빈 공간에 카드를 놓았을 때
                 if (e.target === bottomBar && draggedCard) {
                     bottomBar.appendChild(draggedCard);
                 }
             });
         }
 
-        // --- 버튼 기능들 ---
+        // ================= 버튼 이벤트 =================
 
-        document.getElementById('createCardBtn').addEventListener('click', () => {
-            currentChars = Array.from(inputs).map(input => input.value);
+        document.getElementById('startGameBtn').addEventListener('click', () => {
+            const inputVal = wordInput.value.trim();
+            if (inputVal.length !== 9) {
+                alert("정확히 9글자를 입력해주세요! (공백 포함)");
+                return;
+            }
+            
+            originalText = inputVal;
             setupSection.classList.add('hidden');
             gameSection.classList.remove('hidden');
             initGame();
         });
 
-        // 뒷면으로 뒤집기 (보드에 있든, 하단 바에 있든 전부 적용)
-        document.getElementById('flipAllBtn').addEventListener('click', () => {
-            const cards = document.querySelectorAll('.card');
-            cards.forEach(card => card.classList.add('flipped'));
+        // 🌟 [정답 확인 로직 변경됨]
+        document.getElementById('checkAnswerBtn').addEventListener('click', () => {
+            const slots = board.querySelectorAll('.slot');
+            let currentAnswer = "";
+            let isBoardFull = true;
+
+            slots.forEach(slot => {
+                if (slot.childElementCount === 0) {
+                    isBoardFull = false;
+                } else {
+                    currentAnswer += slot.firstChild.innerText;
+                }
+            });
+
+            if (!isBoardFull) {
+                alert("9칸을 모두 채운 뒤 확인해주세요!");
+                return;
+            }
+
+            if (currentAnswer === originalText) {
+                // 1. Alert 띄우기
+                alert("🎉 정답입니다! 올바르게 배치하셨습니다.");
+                
+                // 2. Alert 닫힌 후, 카드 뒤집고 1~9 숫자 부여하기
+                slots.forEach((slot, index) => {
+                    const card = slot.firstChild;
+                    card.innerText = index + 1; // 1부터 9까지 할당
+                    card.classList.remove('flipped'); // 기존 뒤집힘 제거
+                    card.classList.add('success-flip'); // 새 디자인(정답용 뒷면) 적용
+                    card.draggable = false; // 더 이상 드래그 불가능하게 잠금
+                });
+            } else {
+                alert("🤔 틀렸습니다. 다시 한번 위치를 바꿔보세요!");
+            }
         });
 
-        // 초기화 (카드를 모두 앞면으로 돌리고 하단 바에 다시 모음)
+        document.getElementById('flipAllBtn').addEventListener('click', () => {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                // 이미 정답처리된 카드라면 뒤집기 무시
+                if(!card.classList.contains('success-flip')) {
+                    card.classList.add('flipped');
+                }
+            });
+        });
+
         document.getElementById('restartGameBtn').addEventListener('click', () => {
             initGame(); 
         });
